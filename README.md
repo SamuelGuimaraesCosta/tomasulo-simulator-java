@@ -1,4 +1,4 @@
 Simulador de Tomasulo
 ============
 
-Java implementation of the Speculative version of Tomasulo's algorithm.
+Implementação de um simulador de Tomasulo em Java.
