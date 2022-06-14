@@ -19,7 +19,6 @@ public class MemoryWrapper {
 
 	public MemoryWrapper() {
 		Memory mem = new Memory(1024, 10);
-		Memory.store(0, 4);
 
 		nc = new L1Cache(L1Cache.WRITE_BACK, 10, 256, 32, 2);
 		nc2 = new L2Cache(L1Cache.WRITE_BACK, 10, 256, 64, 2);
@@ -34,6 +33,8 @@ public class MemoryWrapper {
 		c = new Cache(3, nc, nc2, nc3);
 		
 		mem.toString();
+		
+		//System.out.println(mem.toString() + " \n");
 	}
 	
 	public void store(int address, int val) {
@@ -67,6 +68,8 @@ public class MemoryWrapper {
 	public void loadInstructions(ArrayList<InstructionEntry> instructionList, int startIndex) {
 		for (int i = 0; i < instructionList.size(); i++) {
 			Memory.store(i * 2 + startIndex, instructionList.get(i));
+			
+			System.out.println("Instrução alocada na memória: " + instructionList.get(i).getType() + ", " + instructionList.get(i).getRD() + ", " + instructionList.get(i).getRS() + ", " + instructionList.get(i).getRT());
 		}
 	}
 

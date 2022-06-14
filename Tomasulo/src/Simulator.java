@@ -1,5 +1,4 @@
 import java.util.*;
-import java.io.*;
 
 import memory.*;
 import entries.*;
@@ -30,7 +29,9 @@ public class Simulator {
 
 	static void initializeDefault() {
 		Simulator.pc = 0;
+		
 		Assembler assembler = new Assembler();
+		
 		ArrayList<InstructionEntry> instructionList = assembler.read();
 
 		cycle = 0;
@@ -39,12 +40,12 @@ public class Simulator {
 		regStatus = new int[31];
 		
 		for (int i = 0; i < 31; i++) {
-			regFile[i] = i;
+			regFile[i] = 0;
 			regStatus[i] = -1;
 		}
 
-		instructionBuffer = new InstructionBuffer(100);
-		reorderBuffer = new ReorderBuffer(100);
+		instructionBuffer = new InstructionBuffer(256);
+		reorderBuffer = new ReorderBuffer(256);
 
 		resvStations = new ArrayList<ReservationStation>();
 		resvStations.add(new ReservationStation(InstructionType.ADD));
@@ -55,23 +56,37 @@ public class Simulator {
 		resvStations.add(new ReservationStation(InstructionType.BEQ));
 		resvStations.add(new ReservationStation(InstructionType.SW));
 		resvStations.add(new ReservationStation(InstructionType.LW));
+		
+		System.out.println("Estação de reserva iniciada...\n");
+		
+		resvStations.forEach(rss->System.out.println(rss.getType()));
+		
+		System.out.println("\nInstruções alocadas na estação de reseva com sucesso!\n");
+		
+		System.out.println("Memória iniciada...\n");
 
 		memory = new MemoryWrapper();
 		memory.loadInstructions(instructionList, pc);
+		
+		System.out.println("\nInstruções alocadas na memória com sucesso!\n");
+		
+		System.out.println("Configuração do ciclo de instrução iniciado...\n");
 
 		instructionCycles = new HashMap<InstructionType, Integer>();
-		instructionCycles.put(InstructionType.ADD, 9);
-		instructionCycles.put(InstructionType.BEQ, 1);
-		instructionCycles.put(InstructionType.LW, 1);
-		instructionCycles.put(InstructionType.MUL, 1);
-		instructionCycles.put(InstructionType.SW, 1);
+		instructionCycles.put(InstructionType.ADD, 3);
+		instructionCycles.put(InstructionType.BEQ, 2);
+		instructionCycles.put(InstructionType.LW, 5);
+		instructionCycles.put(InstructionType.MUL, 3);
+		instructionCycles.put(InstructionType.SW, 5);
 		instructionCycles.put(InstructionType.ADDI, 1);
+		
+		System.out.println("Ciclos de instruções configurado com sucesso!\n");
 
 		programDone = false;
 		commitDone = false;
 		
-		String file = "Memory.txt";
-		try{
+		/*String file = "Memory.txt";
+		try {
 			BufferedReader br = new BufferedReader(new FileReader(file));
 			String line= "";
 	
@@ -87,7 +102,7 @@ public class Simulator {
 			br.close();
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
-		}
+		}*/
 	}
 
 	static boolean isMemory(InstructionType type) {
@@ -127,8 +142,10 @@ public class Simulator {
 
 	static void commit() {
 		if (reorderBuffer.isEmpty()) {
-			if (programDone)
+			if (programDone) {
 				commitDone = true;
+			}
+				
 			return; // Buffer vazio
 		}
 
@@ -379,6 +396,8 @@ public class Simulator {
 			fetch();
 			
 			cycle++;
+			
+			System.out.println("\nCiclo Atual: " + cycle + "\n");
 		}
 
 		System.out.println("Número de ciclos totais: " + cycle);
@@ -392,14 +411,23 @@ public class Simulator {
 		for (int i = 0; i < regFile.length; i++)
 			System.out.print(i + 1 + " ");
 		System.out.print("]");
+		
 		System.out.print("\nValores:  [ ");
 		for (int i = 0; i < regFile.length; i++)
 			System.out.print(regFile[i] + " ");
 		System.out.print("]");
+		
+		/*System.out.print("\nStatus:  [ ");
+		for (int i = 0; i < regStatus.length; i++)
+			System.out.print(regStatus[i] + " ");
+		System.out.print("]");*/
 	}
 
 	public static void main(String... args) {
+		System.out.println("Simulador iniciado!\n");
+		
 		initializeDefault();
+		
 		run();
 	}
 }
