@@ -12,7 +12,9 @@ public class ReservationStation {
 	boolean busy;
 
 	Stage stage;
+	
 	final InstructionType type;
+	
 	InstructionType operation;
 
 	public ReservationStation (InstructionType type) {

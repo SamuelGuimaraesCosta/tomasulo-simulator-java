@@ -20,11 +20,14 @@ public class L1Cache {
 
 	public L1Cache(String wp, int c, int s, int l, int m) {
 		writePolicy = wp;
+		
 		cycles = c;
+		
 		this.s = s;
 		this.l = l;
 		this.m = m;
 		this.disp = (Log.log(l / 16));
+		
 		instructionsCache = new CacheEntry[s / l][l / 16];
 		dataCache = new CacheEntry[s / l][l / 16];
 		cache = new CacheEntry[s / l][l / 16];

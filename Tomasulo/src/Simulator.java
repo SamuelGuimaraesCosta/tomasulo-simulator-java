@@ -51,17 +51,19 @@ public class Simulator {
 		resvStations.add(new ReservationStation(InstructionType.ADD));
 		resvStations.add(new ReservationStation(InstructionType.ADDI));
 		resvStations.add(new ReservationStation(InstructionType.MUL));
-		resvStations.add(new ReservationStation(InstructionType.MUL));
-		resvStations.add(new ReservationStation(InstructionType.BEQ));
 		resvStations.add(new ReservationStation(InstructionType.BEQ));
 		resvStations.add(new ReservationStation(InstructionType.SW));
 		resvStations.add(new ReservationStation(InstructionType.LW));
 		
-		System.out.println("Estação de reserva iniciada...\n");
+		System.out.println("Buscando instruções na estação de reserva...\n");
 		
-		resvStations.forEach(rss->System.out.println(rss.getType()));
-		
-		System.out.println("\nInstruções alocadas na estação de reseva com sucesso!\n");
+		if(resvStations.size() > 0) {
+			resvStations.forEach(rss->System.out.println(rss.getType()));
+			
+			System.out.println("\nInstruções encontradas na estação de reseva com sucesso!\n");
+		} else {
+			System.out.println("Não há instruções alocadas na estação de reserva!\n");
+		}
 		
 		System.out.println("Memória iniciada...\n");
 
@@ -70,17 +72,17 @@ public class Simulator {
 		
 		System.out.println("\nInstruções alocadas na memória com sucesso!\n");
 		
-		System.out.println("Configuração do ciclo de instrução iniciado...\n");
+		System.out.println("Configuração dos ciclos de instruções iniciado...\n");
 
 		instructionCycles = new HashMap<InstructionType, Integer>();
-		instructionCycles.put(InstructionType.ADD, 3);
-		instructionCycles.put(InstructionType.BEQ, 2);
+		instructionCycles.put(InstructionType.ADD, 2);
+		instructionCycles.put(InstructionType.BEQ, 1);
 		instructionCycles.put(InstructionType.LW, 5);
 		instructionCycles.put(InstructionType.MUL, 3);
 		instructionCycles.put(InstructionType.SW, 5);
-		instructionCycles.put(InstructionType.ADDI, 1);
+		instructionCycles.put(InstructionType.ADDI, 2);
 		
-		System.out.println("Ciclos de instruções configurado com sucesso!\n");
+		System.out.println("Ciclos de instruções configurado com sucesso!");
 
 		programDone = false;
 		commitDone = false;
@@ -153,6 +155,8 @@ public class Simulator {
 		
 		if(!entry.isReady()) return;
 		
+		System.out.println("\nRealizado commit da instrução: " + entry.getType() + ". Ciclo: " + cycle + ".");
+		
 		//if(DEBUG)
 		//	System.out.println(entry);
 		
@@ -177,6 +181,7 @@ public class Simulator {
 				} else {
 					reorderBuffer.moveHead();
 				}
+				
 				break;
 			default:
 				regFile[entry.getDest()] = entry.getVal();
@@ -192,18 +197,23 @@ public class Simulator {
 				// Atualizando o Buffer de Reordenamento
 
 				Integer result = rs.run(); // Valor da Unidade Funcional
+				
 				if (result == null)
 					return;
 
 				rs.stage = Stage.WRITE;
 				
+				System.out.println("\nEcrevendo instrução: " + rs.getType() + ", com estágio de execução. Ciclo: " + cycle + ".\n");
+				
 				// Atualizando a entrada do buffer de reordenamento
 				RobEntry robEntry = (RobEntry) reorderBuffer.get(rs.getRob());
+				
 				robEntry.setReady();
 				robEntry.setValue(result);
+				
+				System.out.println(robEntry + ", Estágio: " + rs.stage);
 
-				if (writesToReg(rs.getType())
-						&& regStatus[robEntry.getDest()] == rs.getRob()) {
+				if (writesToReg(rs.getType()) && regStatus[robEntry.getDest()] == rs.getRob()) {
 					regStatus[robEntry.getDest()] = -1;
 				}
 
@@ -220,6 +230,7 @@ public class Simulator {
 						resvStation.vk = result;
 					}
 				}
+				
 				rs.busy = false;
 				rs.clear();
 			}
@@ -233,9 +244,11 @@ public class Simulator {
 			if (entry.busy == false)
 				continue;
 
-			if (entry.stage == Stage.ISSUE && entry.qj == -1 && entry.qk == -1){
+			if (entry.stage == Stage.ISSUE && entry.qj == -1 && entry.qk == -1) {
 				entry.stage = Stage.EXECUTE;
 				entry.address = entry.vj + entry.address;
+				
+				System.out.println("\nExecutando instrução: " + entry.getType() + ", com estágio de issue(decodificação). Ciclo: " + cycle + ".");
 			} else if (entry.stage == Stage.EXECUTE && entry.remainingCycles > 0)
 				entry.remainingCycles--;
 		}
@@ -249,7 +262,7 @@ public class Simulator {
 		ReservationStation rs = getEmptyRS(inst.getType());
 
 		if (rs != null) {
-			// Tarefa, preenche Buffer de reordenamento, Estação de Reserva e tabela de registradores
+			// Issue(decodificação), preenche Buffer de reordenamento, Estação de Reserva e tabela de registradores
 			instructionBuffer.moveHead();
 
 			if (regStatus[inst.getRS()] != -1) {
@@ -264,47 +277,59 @@ public class Simulator {
 				} else {
 					rs.vj = regFile[inst.getRS()];
 				}
+				
 				rs.qj = -1;
+				
+				System.out.println("\nInstrução: " + inst.getType() + " pronta no Buffer de Reordenamento, já escrita porém não commitada. Ciclo: " + cycle + ".");
 			}
 
 			switch (inst.getType()) {
-			case ADD:
-			case SUB:
-			case MUL:
-			case NAND:
-				if (regStatus[inst.getRT()] != -1) {
-					rs.qk = regStatus[inst.getRT()];
-					rs.vk = 0;
-				} else {
-					int testRob = reorderBuffer.findDest(inst.getRT());
-					if (testRob != -1) {
-						rs.vk = testRob;
+				case ADD:
+				case SUB:
+				case MUL:
+				case NAND:
+					System.out.println("\nInstrução: " + inst.getType() + " em decodificação, com estágio de busca. Ciclo: " + cycle + ".");
+					
+					if (regStatus[inst.getRT()] != -1) {
+						rs.qk = regStatus[inst.getRT()];
+						rs.vk = 0;
 					} else {
-						rs.vk = regFile[inst.getRT()];
+						int testRob = reorderBuffer.findDest(inst.getRT());
+						
+						if (testRob != -1) {
+							rs.vk = testRob;
+						} else {
+							rs.vk = regFile[inst.getRT()];
+						}
+						
+						rs.qk = -1;
 					}
-					rs.qk = -1;
-				}
-				break;
-			case BEQ:
-			case SW:
-				if (regStatus[inst.getRD()] != -1) {
-					rs.qk = regStatus[inst.getRD()];
-					rs.vk = 0;
-				} else {
-					int testRob = reorderBuffer.findDest(inst.getRD());
-					if (testRob != -1) {
-						rs.vk = testRob;
+				
+					break;
+				case BEQ:
+				case SW:
+					if (regStatus[inst.getRD()] != -1) {
+						rs.qk = regStatus[inst.getRD()];
+						rs.vk = 0;
 					} else {
-						rs.vk = regFile[inst.getRD()];
+						int testRob = reorderBuffer.findDest(inst.getRD());
+						
+						if (testRob != -1) {
+							rs.vk = testRob;
+						} else {
+							rs.vk = regFile[inst.getRD()];
+						}
+						
+						rs.qk = -1;
 					}
+					
+					rs.address = inst.getRT();
+					
+					break;
+				default:
 					rs.qk = -1;
-				}
-				rs.address = inst.getRT();
-				break;
-			default:
-				rs.qk = -1;
-				rs.vk = -1;
-				rs.address = inst.getRT();
+					rs.vk = -1;
+					rs.address = inst.getRT();
 			}
 
 			rs.setRob(reorderBuffer.tailIndex());
@@ -331,6 +356,7 @@ public class Simulator {
 			}
 
 			RobEntry robEntry = new RobEntry(destination, rs.getType());
+			
 			reorderBuffer.add(robEntry);
 		}
 	}
@@ -343,40 +369,51 @@ public class Simulator {
 		
 		try {
 			inst = (InstructionEntry) memory.readInstruction(pc * 2, cycle);
+			
+			System.out.println("\nLeitura da instrução: " + inst.getType() + " a partir da memória(Ciclo: " + cycle + ", PC: " + pc * 2 + ").");
 		} catch(NullPointerException e) {
 			//e.printStackTrace();
 			return;
 		}
 				
 		if (inst!= null && !instructionBuffer.isFull()) {
-			System.out.println("Instrução Buscada: " + inst.getType());
+			System.out.println("\nInstrução Encontrada: " + inst.getType() + ". Ciclo: " + cycle + ".");
 
 			switch (inst.getType()) {
-			case JMP: {
-				pc += 1 + regFile[inst.getRD()] + inst.getRS();
-				break;
-			}
-			case BEQ: {
-				inst.setPcAddress(pc + 1);
-				pc += (inst.getRT() >= 0) ? 1 : inst.getRT() + 1;
-				instructionBuffer.add(inst);
-				break;
-			}
-			case JALR: {
-				pc += regFile[inst.getRS()];
-				regFile[inst.getRD()] = pc + 1;
-				break;
-			}
-			case RET: {
-				pc = regFile[inst.getRD()];
-				break;
-			}
-			case END:
-				programDone = true;
-			default:
-				pc += 1;
-				instructionBuffer.add(inst);
-				break;
+				case JMP: {
+					pc += 1 + regFile[inst.getRD()] + inst.getRS();
+					
+					break;
+				}
+				case BEQ: {
+					inst.setPcAddress(pc + 1);
+					
+					pc += (inst.getRT() >= 0) ? 1 : inst.getRT() + 1;
+					
+					instructionBuffer.add(inst);
+					
+					break;
+				}
+				case JALR: {
+					pc += regFile[inst.getRS()];
+					
+					regFile[inst.getRD()] = pc + 1;
+					
+					break;
+				}
+				case RET: {
+					pc = regFile[inst.getRD()];
+					
+					break;
+				}
+				case END:
+					programDone = true;
+				default:
+					pc += 1;
+					
+					instructionBuffer.add(inst);
+					
+					break;
 			}
 		}
 	}
@@ -397,22 +434,23 @@ public class Simulator {
 			
 			cycle++;
 			
-			System.out.println("\nCiclo Atual: " + cycle + "\n");
+			//System.out.println("\nCiclo Atual: " + cycle);
 		}
-
-		System.out.println("Número de ciclos totais: " + cycle);
+		
+		System.out.println("\nSimulação finalizada, resultados:");
+		System.out.println("\nCiclos totais: " + cycle);
 		System.out.println("IPC: "  + (pc - 1) / (double)cycle);
 		System.out.println("Hit/Ratio Cache Nível 1: " + memory.getL1CacheR());
 		System.out.println("Hit/Ratio Cache Nível 2: " + memory.getL2CacheR());
 		System.out.println("Hit/Ratio Cache Nível 3: " + memory.getL3CacheR());
 		System.out.println("Valores dos registradores: ");
 		
-		System.out.print("Posições: [ ");
+		System.out.print("Posição: \n[ ");
 		for (int i = 0; i < regFile.length; i++)
 			System.out.print(i + 1 + " ");
 		System.out.print("]");
 		
-		System.out.print("\nValores:  [ ");
+		System.out.print("\nValor:  \n[ ");
 		for (int i = 0; i < regFile.length; i++)
 			System.out.print(regFile[i] + " ");
 		System.out.print("]");

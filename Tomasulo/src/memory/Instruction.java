@@ -201,8 +201,9 @@ public class Instruction {
 
 	public String toString() {
 		String ins;
-		ins = "Instrução: "+ ID + "Decodificada: " + decStartTime + " - " + decEndTime + "Despachada: " + dispStartTime + " - " + dispEndTime + "Tarefa: " + issueStartTime + " - " + issueEndTime
-				+ "Executada: " + execStartTime + " - " + execEndTime + "Tempo de Commit: " + commitEndTime + "Tempo Final do Cahce: " + cacheEndTime;
+		
+		ins = "ID Instrução: "+ ID + " Decodificada: " + decStartTime + " - " + decEndTime + " Despachada: " + dispStartTime + " - " + dispEndTime + " Tarefa: " + issueStartTime + " - " + issueEndTime
+				+ " Executada: " + execStartTime + " - " + execEndTime + " Tempo de Commit: " + commitEndTime + " Tempo na Cache: " + cacheEndTime;
 		
 		return ins;
 	}

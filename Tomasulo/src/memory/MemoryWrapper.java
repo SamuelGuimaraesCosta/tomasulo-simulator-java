@@ -18,7 +18,7 @@ public class MemoryWrapper {
 	boolean readingInstruction;
 
 	public MemoryWrapper() {
-		Memory mem = new Memory(1024, 10);
+		Memory mem = new Memory(512, 25);
 
 		nc = new L1Cache(L1Cache.WRITE_BACK, 10, 256, 32, 2);
 		nc2 = new L2Cache(L1Cache.WRITE_BACK, 10, 256, 64, 2);
@@ -26,15 +26,18 @@ public class MemoryWrapper {
 
 		nc3.setL1(nc);
 		nc3.setL2(nc2);
+		
 		nc2.setL3(nc3);
 		nc2.setL1(nc);
+		
 		nc.setL2(nc2);
 		nc.setL3(nc3);
+		
 		c = new Cache(3, nc, nc2, nc3);
 		
-		mem.toString();
+		System.out.println(mem + "\n");
 		
-		//System.out.println(mem.toString() + " \n");
+		mem.toString();
 	}
 	
 	public void store(int address, int val) {

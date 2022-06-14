@@ -50,8 +50,7 @@ public class RobEntry implements Entry {
 		branchTaken = b;
 	}
 	
-	public boolean isReady(){
+	public boolean isReady() {
 		return ready;
 	}
-
 }
