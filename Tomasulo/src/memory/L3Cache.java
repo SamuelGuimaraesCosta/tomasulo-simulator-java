@@ -29,37 +29,35 @@ public class L3Cache {
 
 	public Object readFromCache(int address, long currentTime) throws Exception {
 		int baseAddress = (int) (address - address % Math.pow(2, disp));
+		
 		for (int i = 0; i < cache.length; i++) {
 			if (cache[i] != null) {
-				if (cache[i][0] != null && cache[i][0].check(baseAddress)) { // Found
+				if (cache[i][0] != null && cache[i][0].check(baseAddress)) { // Achou na Cache L3
 					for (int j = 0; j < cache[i].length; j++) {
 						cache[i][j].setTimeInCache(currentTime);
 					}
-					l2.updateFromL3Cache(address, baseAddress, cache[i],
-							currentTime);
+					l2.updateFromL3Cache(address, baseAddress, cache[i], currentTime);
+					
 					hits++;
+					
 					return cache[i][address - baseAddress].getValue();
 				}
 			}
 		}
+		
 		misses++;
+		
 		throw new Exception(NOT_FOUND, new Throwable());
 	}
 
 	public void updateValue(int address, Object value, long currentTime) {
-		int baseAddress = (int) (address - address % Math.pow(2, disp)); // The
-																			// base
-																			// address
-																			// is
-																			// modified
-																			// in
-																			// the
-																			// code
-																			// below
+		int baseAddress = (int) (address - address % Math.pow(2, disp));
+		
 		for (int i = 0; i < cache.length; i++) {
 			if (cache[i][0] != null)
 				if (cache[i][0].getAddress() == baseAddress) {
 					int index = address - baseAddress;
+					
 					cache[i][index].setValue(value);
 					cache[i][0].setTimeInCache(currentTime);
 					cache[i][index].setTimeInCache(currentTime);
@@ -68,81 +66,94 @@ public class L3Cache {
 	}
 
 	public Object readMiss(int address, long currentTime) {
-
-		int baseAddress = (int) (address - address % Math.pow(2, disp)); // The
-																			// base
-																			// address
-																			// is
-																			// modified
-																			// in
-																			// the
-																			// code
-																			// below
+		int baseAddress = (int) (address - address % Math.pow(2, disp));
+		
 		Object[] value = new Object[l / 16];
+		
 		for (int i = 0; i < value.length; i++)
 			value[i] = Memory.load(baseAddress + i);
-		int temp = baseAddress; // Stored in temp value to be used as the
-								// original base address
+		
+		int temp = baseAddress;
+		
 		if (m == 1) {
 			int disp = (Log.log(l / 16));
+			
 			baseAddress = (int) (baseAddress / Math.pow(2, disp));
+			
 			int index = baseAddress % (s / l);
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[index][0] != null) {
 					if (cache[index][0].isDirty()) {
 						for (int i = 0; i < s / l; i++) {
-							Memory.store(cache[index][i].getAddress(),
-									cache[index][i].getValue());
+							Memory.store(cache[index][i].getAddress(), cache[index][i].getValue());
 						}
 					}
 				}
 			}
+			
 			addToCache(index, temp, value, currentTime);
+			
 			l2.updateFromL3Cache(address, temp, cache[index], currentTime);
+			
 			return value[address - temp];
 		} else if (m == s / l) {
 			for (int i = 0; i < cache.length; i++) {
 				if (cache[i][0] == null) {
 					addToCache(i, temp, value, currentTime);
+					
 					l2.updateFromL3Cache(address, temp, cache[i], currentTime);
+					
 					return value[address - temp];
 				}
 			}
+			
 			int index = LRU();
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[index][0].isDirty()) {
 					for (int i = 0; i < s / l; i++) {
-						Memory.store(cache[index][i].getAddress(),
-								cache[index][i].getValue());
+						Memory.store(cache[index][i].getAddress(), cache[index][i].getValue());
 					}
 				}
 			}
+			
 			addToCache(index, temp, value, currentTime);
+			
 			l2.updateFromL3Cache(address, temp, cache[index], currentTime);
+			
 			return value[address - temp];
 		} else {
 			baseAddress = (int) (baseAddress / Math.pow(2, disp));
+			
 			int index = baseAddress % (s / l / m);
+			
 			for (; index < cache.length; index += (s / l / m)) {
 				if (cache[index][0] == null) {
 					addToCache(index, temp, value, currentTime);
-					l2.updateFromL3Cache(address, temp, cache[index],
-							currentTime);
+					
+					l2.updateFromL3Cache(address, temp, cache[index], currentTime);
+					
 					return value[address - temp];
 				}
 			}
+			
 			index = baseAddress % (s / l / m);
+			
 			int newIndex = setAssociativeLRU(index);
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[newIndex][0].isDirty()) {
 					for (int i = 0; i < s / l; i++) {
-						Memory.store(cache[newIndex][i].getAddress(),
-								cache[newIndex][i].getValue());
+						Memory.store(cache[newIndex][i].getAddress(), cache[newIndex][i].getValue());
 					}
 				}
 			}
+			
 			addToCache(newIndex, temp, value, currentTime);
+			
 			l2.updateFromL3Cache(address, temp, cache[newIndex], currentTime);
+			
 			return value[address - temp];
 		}
 	}
@@ -150,6 +161,7 @@ public class L3Cache {
 	private int setAssociativeLRU(int index) {
 		long minSoFar = cache[index][0].getTimeInCache();
 		int newIndex = index;
+		
 		for (; index < cache.length; index += (s / l / m)) {
 			if (cache[index][0].getTimeInCache() < minSoFar) {
 				minSoFar = cache[index][0].getTimeInCache();
@@ -159,13 +171,11 @@ public class L3Cache {
 		return newIndex;
 	}
 
-	private void addToCache(int index, int baseAddress, Object[] value,
-			long currentTime) {
+	private void addToCache(int index, int baseAddress, Object[] value, long currentTime) {
 		int size = l / 16;
-		// cache[index] = new CacheEntry[size];
+		
 		for (int i = 0; i < size; i++) {
-			cache[index][i] = new CacheEntry(baseAddress + i, value[i],
-					currentTime);
+			cache[index][i] = new CacheEntry(baseAddress + i, value[i], currentTime);
 		}
 	}
 

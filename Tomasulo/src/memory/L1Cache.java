@@ -38,7 +38,7 @@ public class L1Cache {
 			// Leitura a partir das instruções na Cache
 			for (int i = 0; i < instructionsCache.length; i++) {
 				if (instructionsCache[i] != null) {
-					if (instructionsCache[i][0] != null && instructionsCache[i][0].check(baseAdress)) { // Achou na Cache
+					if (instructionsCache[i][0] != null && instructionsCache[i][0].check(baseAdress)) { // Achou na Cache L1
 						for (int j = 0; j < instructionsCache[i].length; j++) {
 							instructionsCache[i][j].setTimeInCache(currentTime);
 						}
@@ -49,11 +49,10 @@ public class L1Cache {
 			}
 			misses++;
 		} else {
-			// read from dataCache
+			//leitura a partir da cache de dados
 			for (int i = 0; i < dataCache.length; i++) {
 				if (dataCache[i] != null) {
-					if (dataCache[i][0] != null
-							&& dataCache[i][0].check(baseAdress)) { // Found
+					if (dataCache[i][0] != null && dataCache[i][0].check(baseAdress)) { // Achou na Cache de Dados
 						for (int j = 0; j < dataCache[i].length; j++) {
 							dataCache[i][j].setTimeInCache(currentTime);
 						}
@@ -68,130 +67,139 @@ public class L1Cache {
 	}
 
 	public Object readMiss(int address, long currentTime) {
-		// TODO handle dirty bits with all below levels of cache.
-		int baseAddress = (int) (address - address % Math.pow(2, disp)); // The
-																			// base
-																			// address
-																			// is
-																			// modified
-																			// in
-																			// the
-																			// code
-																			// below
+		int baseAddress = (int) (address - address % Math.pow(2, disp));
+		
 		Object[] value = new Object[s / l];
+		
 		for (int i = 0; i < value.length; i++)
 			value[i] = Memory.load(baseAddress + i);
-		int temp = baseAddress; // Stored in temp value to be used as the
-								// original base address
+		
+		int temp = baseAddress;
+		
 		if (m == 1) {
 			int disp = (Log.log(l / 16));
+			
 			baseAddress = (int) (baseAddress / Math.pow(2, disp));
+			
 			int index = baseAddress % (s / l);
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[index][0] != null) {
 					if (cache[index][0].isDirty()) {
 						for (int i = 0; i < s / l; i++) {
-							Memory.store(cache[index][i].getAddress(),
-									cache[index][i].getValue());
+							Memory.store(cache[index][i].getAddress(), cache[index][i].getValue());
 						}
 					}
 				}
 			}
+			
 			addToCache(index, temp, value, currentTime);
+			
 			return value[address - temp];
 		} else if (m == s / l) {
 			for (int i = 0; i < cache.length; i++) {
 				if (cache[i][0] == null) {
 					addToCache(i, temp, value, currentTime);
+					
 					return value[address - temp];
 				}
 			}
+			
 			int index = LRU();
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[index][0].isDirty()) {
 					for (int i = 0; i < s / l; i++) {
-						Memory.store(cache[index][i].getAddress(),
-								cache[index][i].getValue());
+						Memory.store(cache[index][i].getAddress(), cache[index][i].getValue());
 					}
 				}
 			}
+			
 			addToCache(index, temp, value, currentTime);
+			
 			return value[address - temp];
 		} else {
 			baseAddress = (int) (baseAddress / Math.pow(2, disp));
+			
 			int index = baseAddress % (s / l / m);
+			
 			for (; index < cache.length; index += (s / l / m)) {
 				if (cache[index][0] == null) {
 					addToCache(index, temp, value, currentTime);
+					
 					return value[address - temp];
 				}
 			}
+			
 			index = baseAddress % (s / l / m);
+			
 			int newIndex = setAssociativeLRU(index);
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[newIndex][0].isDirty()) {
 					for (int i = 0; i < s / l; i++) {
-						Memory.store(cache[newIndex][i].getAddress(),
-								cache[newIndex][i].getValue());
+						Memory.store(cache[newIndex][i].getAddress(), cache[newIndex][i].getValue());
 					}
 				}
 			}
 			addToCache(newIndex, temp, value, currentTime);
 			return value[address - temp];
 		}
-
 	}
 
-	private void writeBack(int address, Object value, long currentTime,
-			int index, boolean readInstruction) {
+	private void writeBack(int address, Object value, long currentTime, int index, boolean readInstruction) {
 		int i = 0;
 		int size = l / 16;
 		for (; i < size; i++) {
 			if (readInstruction) {
 				instructionsCache[index][i].setDirty(true);
 				instructionsCache[index][i].setTimeInCache(currentTime);
+				
 				if (instructionsCache[index][i].getAddress() == address)
 					instructionsCache[index][i].setValue(value);
 			} else {
 				dataCache[index][i].setDirty(true);
 				dataCache[index][i].setTimeInCache(currentTime);
+				
 				if (dataCache[index][i].getAddress() == address)
 					dataCache[index][i].setValue(value);
 			}
+			
 			cache[index][i].setDirty(true);
 			cache[index][i].setTimeInCache(currentTime);
+			
 			if (cache[index][i].getAddress() == address)
 				cache[index][i].setValue(value);
 		}
 	}
 
-	private void writeThrough(int address, Object value, long currentTime,
-			int index, boolean readInstruction) {
+	private void writeThrough(int address, Object value, long currentTime, int index, boolean readInstruction) {
 		int i = 0;
 		int size = s / l;
 
 		for (; i < size; i++) {
 			if (readInstruction) {
 				instructionsCache[index][i].setTimeInCache(currentTime);
-				if (instructionsCache[index][i].getAddress() == address) {
+				
+				if (instructionsCache[index][i].getAddress() == address)
 					instructionsCache[index][i].setValue(value);
-				}
 			} else {
 				dataCache[index][i].setTimeInCache(currentTime);
-				if (dataCache[index][i].getAddress() == address) {
+				
+				if (dataCache[index][i].getAddress() == address)
 					dataCache[index][i].setValue(value);
-				}
 			}
 			cache[index][i].setTimeInCache(currentTime);
+			
 			if (cache[index][i].getAddress() == address) {
 				cache[index][i].setValue(value);
+				
 				updateMemoryAndCaches(index, i, currentTime);
 			}
 		}
 	}
 
-	public void writeToCache(int address, Object value, long currentTime,
-			Instruction instruction, boolean readInstruction) throws Exception {
+	public void writeToCache(int address, Object value, long currentTime, Instruction instruction, boolean readInstruction) throws Exception {
 		int baseAdress = (int) (address - address % Math.pow(2, disp));
 		int index = 0;
 		boolean found = false;
@@ -200,8 +208,7 @@ public class L1Cache {
 		if (readInstruction) {
 			for (int i = 0; i < instructionsCache.length; i++) {
 				if (instructionsCache[i] != null) {
-					if (instructionsCache[i][0] != null
-							&& instructionsCache[i][0].check(baseAdress)) { // Found
+					if (instructionsCache[i][0] != null && instructionsCache[i][0].check(baseAdress)) { // Achou na Cache L1
 						for (int j = 0; j < instructionsCache[i].length; j++) {
 							instructionsCache[i][j].setTimeInCache(currentTime);
 							cache[i][j].setTimeInCache(currentTime);
@@ -215,8 +222,7 @@ public class L1Cache {
 		} else {
 			for (int i = 0; i < dataCache.length; i++) {
 				if (dataCache[i] != null) {
-					if (dataCache[i][0] != null
-							&& dataCache[i][0].check(baseAdress)) { // Found
+					if (dataCache[i][0] != null && dataCache[i][0].check(baseAdress)) { // Achou na Cache de Dados
 						for (int j = 0; j < dataCache[i].length; j++) {
 							dataCache[i][j].setTimeInCache(currentTime);
 							cache[i][j].setTimeInCache(currentTime);
@@ -233,59 +239,51 @@ public class L1Cache {
 			if (writePolicy.equals(WRITE_BACK))
 				writeBack(address, value, currentTime, index, readInstruction);
 			else
-				writeThrough(address, value, currentTime, index,
-						readInstruction);
+				writeThrough(address, value, currentTime, index, readInstruction);
 			instruction.setCacheEndTime(currentTime + cycles);
 			hits++;
 		} else {
 			misses++;
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (l2 != null) {
 					try {
 						l2.readFromCache(address, currentTime);
-						instruction.setCacheEndTime(currentTime + cycles
-								+ l2.getCycles());
-
+						
+						instruction.setCacheEndTime(currentTime + cycles + l2.getCycles());
 					} catch (Exception e) {
 						if (l3 == null) {
 							l2.readMiss(address, currentTime);
-							instruction.setCacheEndTime(currentTime + cycles
-									+ l2.getCycles() + Memory.getAccessTime());
+							instruction.setCacheEndTime(currentTime + cycles + l2.getCycles() + Memory.getAccessTime());
 						} else {
 							try {
 								l3.readFromCache(address, currentTime);
-								instruction.setCacheEndTime(currentTime
-										+ cycles + l2.getCycles()
-										+ l3.getCycles());
+								instruction.setCacheEndTime(currentTime + cycles + l2.getCycles() + l3.getCycles());
 							} catch (Exception e1) {
 								l3.readMiss(address, currentTime);
-								instruction.setCacheEndTime(currentTime
-										+ cycles + l2.getCycles()
-										+ l3.getCycles()
-										+ Memory.getAccessTime());
+								instruction.setCacheEndTime(currentTime + cycles + l2.getCycles() + l3.getCycles() + Memory.getAccessTime());
 							}
 						}
 					}
 				} else {
 					readMiss(address, currentTime);
-					instruction.setCacheEndTime(currentTime + cycles
-							+ Memory.getAccessTime());
+					
+					instruction.setCacheEndTime(currentTime + cycles + Memory.getAccessTime());
 				}
 				index = getIndex(address);
+				
 				if (index == -1)
 					throw new Exception(NOT_FOUND);
 				writeBack(address, value, currentTime, index, readInstruction);
 			} else {
-				// TODO If found not found in all levels.
 				updateMemoryAndCaches2(address, value, currentTime);
 			}
-
 		}
 	}
 
-	private void updateMemoryAndCaches2(int address, Object value,
-			long currentTime) {
+	private void updateMemoryAndCaches2(int address, Object value, long currentTime) {
 		Memory.store(address, value);
+		
 		if (l2 != null) {
 			l2.updateValue(address, value, currentTime);
 		}
@@ -297,6 +295,7 @@ public class L1Cache {
 	private int getIndex(int address) {
 		int baseAddress = (int) (address - address % Math.pow(2, disp));
 		int i = 0;
+		
 		for (; i < cache.length; i++) {
 			if (cache[i][0] != null)
 				if (cache[i][0].getAddress() == baseAddress)
@@ -305,26 +304,24 @@ public class L1Cache {
 		return -1;
 	}
 
-	private void addToCache(int index, int baseAddress, Object[] value,
-			long currentTime) {
+	private void addToCache(int index, int baseAddress, Object[] value, long currentTime) {
 		int size = l / 16;
 
 		instructionsCache[index] = new CacheEntry[size];
 		dataCache[index] = new CacheEntry[size];
 		cache[index] = new CacheEntry[size];
+		
 		for (int i = 0; i < size; i++) {
-			instructionsCache[index][i] = new CacheEntry(baseAddress + i,
-					value[i], currentTime);
-			dataCache[index][i] = new CacheEntry(baseAddress + i, value[i],
-					currentTime);
-			cache[index][i] = new CacheEntry(baseAddress + i, value[i],
-					currentTime);
+			instructionsCache[index][i] = new CacheEntry(baseAddress + i, value[i], currentTime);
+			dataCache[index][i] = new CacheEntry(baseAddress + i, value[i], currentTime);
+			cache[index][i] = new CacheEntry(baseAddress + i, value[i], currentTime);
 		}
 	}
 
 	private int setAssociativeLRU(int index) {
 		long minSoFar = cache[index][0].getTimeInCache();
 		int newIndex = index;
+		
 		for (; index < cache.length; index += (s / l / m)) {
 			if (cache[index][0].getTimeInCache() < minSoFar) {
 				minSoFar = cache[index][0].getTimeInCache();
@@ -334,24 +331,17 @@ public class L1Cache {
 		return newIndex;
 	}
 
-	public void updateFromL2Cache(int address, int baseAddress2,
-			CacheEntry[] values, long currentTime) {
-		// TODO handle dirty bits with all below levels of cache.
-		int baseAddress = (int) (address - address % Math.pow(2, disp)); // The
-																			// base
-																			// address
-																			// is
-																			// modified
-																			// in
-																			// the
-																			// code
-																			// below
-		int temp = baseAddress; // Stored in temp value to be used as the
-								// original base address
+	public void updateFromL2Cache(int address, int baseAddress2, CacheEntry[] values, long currentTime) {
+		int baseAddress = (int) (address - address % Math.pow(2, disp));
+		int temp = baseAddress;
+		
 		if (m == 1) {
 			int disp = (Log.log(l / 16));
+			
 			baseAddress = (int) (baseAddress / Math.pow(2, disp));
+			
 			int index = baseAddress % (s / l);
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[index][0] != null) {
 					if (cache[index][0].isDirty()) {
@@ -361,28 +351,35 @@ public class L1Cache {
 					}
 				}
 			}
+			
 			int deltaAddress = temp - baseAddress2;
+			
 			Object[] value = new Object[(l / 16)];
+			
 			for (int i = deltaAddress; i < deltaAddress + (l / 16); i++) {
 				value[i - deltaAddress] = values[i].getValue();
 			}
+			
 			addToCache(index, temp, value, currentTime);
 			return;
-			// return value[address-temp];
 		} else if (m == s / l) {
 			for (int i = 0; i < cache.length; i++) {
 				if (cache[i][0] == null) {
 					int deltaAddress = temp - baseAddress2;
+					
 					Object[] value = new Object[(l / 16)];
+					
 					for (int j = deltaAddress; j < deltaAddress + (l / 16); j++) {
 						value[j - deltaAddress] = values[i].getValue();
 					}
+					
 					addToCache(i, temp, value, currentTime);
 					return;
-					// return value[address-temp];
 				}
 			}
+			
 			int index = LRU();
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[index][0].isDirty()) {
 					for (int i = 0; i < l / 16; i++) {
@@ -390,31 +387,41 @@ public class L1Cache {
 					}
 				}
 			}
+			
 			int deltaAddress = temp - baseAddress2;
+			
 			Object[] value = new Object[(l / 16)];
+			
 			for (int j = deltaAddress; j < deltaAddress + (l / 16); j++) {
 				value[j - deltaAddress] = values[j].getValue();
 			}
+			
 			addToCache(index, temp, value, currentTime);
 			return;
-			// return value[address-temp];
 		} else {
 			baseAddress = (int) (baseAddress / Math.pow(2, disp));
+			
 			int index = baseAddress % (s / l / m);
+			
 			for (; index < cache.length; index += (s / l / m)) {
 				if (cache[index][0] == null) {
 					int deltaAddress = temp - baseAddress2;
+					
 					Object[] value = new Object[(l / 16)];
+					
 					for (int j = deltaAddress; j < deltaAddress + (l / 16); j++) {
 						value[j - deltaAddress] = values[j].getValue();
 					}
+					
 					addToCache(index, temp, value, currentTime);
 					return;
-					// return value[address-temp];
 				}
 			}
+			
 			index = baseAddress % (s / l / m);
+			
 			int newIndex = setAssociativeLRU(index);
+			
 			if (writePolicy.equals(WRITE_BACK)) {
 				if (cache[newIndex][0].isDirty()) {
 					for (int i = 0; i < l / 16; i++) {
@@ -422,23 +429,26 @@ public class L1Cache {
 					}
 				}
 			}
+			
 			int deltaAddress = temp - baseAddress2;
+			
 			Object[] value = new Object[(l / 16)];
+			
 			for (int j = deltaAddress; j < deltaAddress + (l / 16); j++) {
 				value[j - deltaAddress] = values[j].getValue();
 			}
+			
 			addToCache(newIndex, temp, value, currentTime);
 			return;
-			// return value[address-temp];
 		}
-
 	}
 
-	private void updateMemoryAndCaches(int cacheLine, int indexInCacheLine,
-			long currentTime) {
+	private void updateMemoryAndCaches(int cacheLine, int indexInCacheLine, long currentTime) {
 		int address = cache[cacheLine][indexInCacheLine].getAddress();
 		Object value = cache[cacheLine][indexInCacheLine].getValue();
+		
 		Memory.store(address, value);
+		
 		if (l2 != null) {
 			l2.updateValue(address, value, currentTime);
 		}
@@ -522,6 +532,7 @@ public class L1Cache {
 
 	public String toString() {
 		String x = "";
+		
 		for (int i = 0; i < cache.length; i++) {
 			for (int j = 0; j < cache[i].length && cache[i][j] != null; j++) {
 				x += "Index: " + i + " " + cache[i][j].toString();

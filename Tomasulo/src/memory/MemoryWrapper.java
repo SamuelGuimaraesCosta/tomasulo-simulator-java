@@ -1,15 +1,7 @@
 package memory;
 
-//TODO: Store array of objects rather than integers
-//TODO: Have just ONE place where memory size is set
-//TODO: Instruction cache vs. data cache L1
-
-//TODO: Have memory take array list of instructions
-//TODO: Input from user for cache hierarchy
-
 import java.util.*;
 import entries.*;
-import memory.*;
 
 public class MemoryWrapper {
 	Instruction i;
@@ -44,7 +36,7 @@ public class MemoryWrapper {
 		mem.toString();
 	}
 	
-	public void store(int address, int val){
+	public void store(int address, int val) {
 		Memory.store(address, val);
 	}
 
@@ -52,7 +44,9 @@ public class MemoryWrapper {
 		this.nc = nc;
 		this.nc2 = nc2;
 		this.nc3 = nc3;
+		
 		Memory mem = new Memory(1024, memoryAccessTime);
+		
 		if (nc3 != null) {
 			nc3.setL1(nc);
 			nc3.setL2(nc2);
@@ -61,8 +55,10 @@ public class MemoryWrapper {
 			nc2.setL3(nc3);
 			nc2.setL1(nc);
 		}
+		
 		nc.setL2(nc2);
 		nc.setL3(nc3);
+		
 		c = new Cache(3, nc, nc2, nc3);
 		
 		mem.toString();
@@ -79,10 +75,11 @@ public class MemoryWrapper {
 			i = new Instruction();
 			busy = true;
 			try {
-				val = (Integer) c.read(address, currentTime, i, false);
+				val = (Integer) Cache.read(address, currentTime, i, false);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
+			
 			return null;
 		} else {
 			if (currentTime < i.getCacheEndTime()) {
@@ -90,6 +87,7 @@ public class MemoryWrapper {
 			} else {
 				i = null;
 				busy = false;
+				
 				return (Integer) val;
 			}
 		}
@@ -99,16 +97,19 @@ public class MemoryWrapper {
 		if (!readingInstruction) {
 			i2 = new Instruction();
 			readingInstruction = true;
+			
 			try {
-				inst = (InstructionEntry) c.read(address, currentTime, i2, true);
+				inst = (InstructionEntry) Cache.read(address, currentTime, i2, true);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			
 			return null;
 		} else if (readingInstruction && currentTime < i2.getCacheEndTime()) {
 			return null;
 		} else if (readingInstruction) {
 			readingInstruction = false;
+			
 			return inst;
 		}
 		return null;
@@ -118,21 +119,23 @@ public class MemoryWrapper {
 		if (!busy) {
 			i = new Instruction();
 			busy = true;
+			
 			try {
 				Cache.write(address, val, currentTime, i, false);
 			} catch (Exception e) {
-				System.out.println(e);
+				e.printStackTrace();
 			}
+			
 			return false;
 		} else {
 			if (currentTime < i.getCacheEndTime())
 				return false;
 			else {
 				busy = false;
+				
 				return true;
 			}
 		}
-
 	}
 
 	public double getL1CacheR() {
