@@ -1,7 +1,7 @@
 Simulador de Tomasulo
 ============
 
-Implementação de um simulador de Tomasulo em Java.
+Implementação de um simulador do Algoritmo de Tomasulo em Java.
 
 Pontifícia Universidade Católica de Minas Gerais
 
